@@ -3,19 +3,233 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculator Panel</title>
+    <title>Calculator Panel - CLT Panel Properties</title>
 
     <!-- CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .card {
+            border: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+        }
+        .card-header {
+            background-color: #2c3e50;
+            color: white;
+            font-weight: 600;
+            border-bottom: none;
+        }
+        .section-header {
+            background-color: #34495e;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+        .layer-row {
+            background-color: #f1f3f5;
+            border-radius: 0.25rem;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+        .result-table th {
+            background-color: #ecf0f1;
+        }
+        .result-value {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+        }
+        .method-badge {
+            font-size: 0.85rem;
+            padding: 0.35rem 0.75rem;
+        }
+        .validation-message {
+            font-size: 0.9rem;
+        }
+        .remove-btn {
+            cursor: pointer;
+        }
+        .method-section {
+            transition: all 0.3s ease;
+        }
+        .hidden-section {
+            display: none !important;
+        }
+        @media print {
+            .no-print { display: none !important; }
+            .card { break-inside: avoid; }
+        }
+    </style>
 </head>
 <body>
     <div class="container py-4">
-        <h1 class="mb-4">Calculator Panel</h1>
-        <!-- Write Input On Here -->
+        <h1 class="mb-4">CLT Panel Properties Calculator</h1>
+        
+        <!-- Input Section -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Input Configuration</span>
+                <span id="layerCount" class="badge bg-light text-dark">0 Layers</span>
+            </div>
+            <div class="card-body">
+                <!-- General Configuration -->
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Layup Name</label>
+                        <input type="text" id="layupName" class="form-control" value="CLT Panel">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Effective Width (b<sub>eff</sub>) mm</label>
+                        <input type="number" id="beff" class="form-control" value="1000" min="1">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Material Grade</label>
+                        <select id="materialGrade" class="form-select">
+                            <option value="MGP10">MGP10</option>
+                            <option value="MGP12">MGP12</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Analytical Method -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Analytical Method</label>
+                        <select id="analyticalMethod" class="form-select">
+                            <option value="shear-analogy">Shear Analogy</option>
+                            <option value="gamma">Gamma Method</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Number of Layers</label>
+                        <div class="d-flex gap-2">
+                            <input type="number" id="numLayers" class="form-control" value="5" min="3" max="9">
+                            <button id="applyLayersBtn" class="btn btn-primary">Apply</button>
+                        </div>
+                        <div id="layerValidation" class="form-text text-danger validation-message mt-1"></div>
+                    </div>
+                </div>
+
+                <!-- Layer Configuration -->
+                <div class="section-header">Layer Configuration</div>
+                <div id="layerContainer"></div>
+
+                <!-- Buttons -->
+                <div class="d-flex gap-2 mt-3 no-print">
+                    <button id="calculateBtn" class="btn btn-success btn-lg flex-grow-1">
+                        <strong>Calculate Panel Properties</strong>
+                    </button>
+                    <button id="resetBtn" class="btn btn-outline-secondary">Reset</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Output Section -->
+        <div class="card">
+            <div class="card-header">Calculation Results</div>
+            <div class="card-body" id="resultsContainer">
+                <div id="validationAlert" class="alert alert-danger d-none"></div>
+                <div id="resultContent" class="d-none">
+                    <!-- Summary -->
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="border rounded p-3 text-center">
+                                <small class="text-muted">Effective Bending Stiffness (EI<sub>eff</sub>)</small>
+                                <div id="eiEffResult" class="result-value fs-4 mt-1">-</div>
+                                <small class="text-muted">N-mm²/m</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="border rounded p-3 text-center">
+                                <small class="text-muted">Method</small>
+                                <div id="methodResult" class="result-value fs-4 mt-1">-</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="border rounded p-3 text-center">
+                                <small class="text-muted">Total Thickness</small>
+                                <div id="thicknessResult" class="result-value fs-4 mt-1">-</div>
+                                <small class="text-muted">mm</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Shear Analogy Section -->
+                    <div id="shearAnalogySection" class="method-section hidden-section">
+                        <div class="section-header">Shear Analogy Method - Layer Properties</div>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Layer</th>
+                                        <th>t<sub>i</sub> (mm)</th>
+                                        <th>θ<sub>i</sub> (°)</th>
+                                        <th>E<sub>i,XX</sub> (MPa)</th>
+                                        <th>G<sub>i</sub> (MPa)</th>
+                                        <th>y<sub>i</sub> (mm)</th>
+                                        <th>a<sub>i</sub> (mm)</th>
+                                        <th>b<sub>eff</sub>·t<sub>i</sub>³/12 (mm⁴)</th>
+                                        <th>b<sub>eff</sub>·t<sub>i</sub>·a<sub>i</sub>² (mm⁴)</th>
+                                        <th>EI<sub>i</sub> (N-mm²/m)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="shearAnalogyTableBody"></tbody>
+                                <tfoot class="table-secondary">
+                                    <tr>
+                                        <td colspan="9" class="text-end fw-bold">Σ EI<sub>eff</sub> =</td>
+                                        <td id="shearAnalogyTotalEI" class="fw-bold">-</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Gamma Section -->
+                    <div id="gammaSection" class="method-section hidden-section">
+                        <div class="section-header">Gamma Method - Layer Properties</div>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Layer</th>
+                                        <th>t<sub>i</sub> (mm)</th>
+                                        <th>θ<sub>i</sub> (°)</th>
+                                        <th>E<sub>i,XX</sub> (MPa)</th>
+                                        <th>G<sub>i</sub> (MPa)</th>
+                                        <th>γ<sub>i</sub> (-)</th>
+                                        <th>a<sub>i</sub> (mm)</th>
+                                        <th>b<sub>eff</sub>·t<sub>i</sub>³/12 (mm⁴)</th>
+                                        <th>γ<sub>i</sub>·b<sub>eff</sub>·t<sub>i</sub>·a<sub>i</sub>² (mm⁴)</th>
+                                        <th>EI<sub>i</sub> (N-mm²/m)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="gammaTableBody"></tbody>
+                                <tfoot class="table-secondary">
+                                    <tr>
+                                        <td colspan="9" class="text-end fw-bold">Σ EI<sub>eff</sub> (γ) =</td>
+                                        <td id="gammaTotalEI" class="fw-bold">-</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Script -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="type/material-grade-type.js"></script>
+    <script src="type/clt-layer-type.js"></script>
+    <script src="type/clt-layup-type.js"></script>
+    <script src="type/clt-layer-properties-type.js"></script>
+    <script src="type/panel-properties-type.js"></script>
+    <script src="calculation/panel-properties.js"></script>
     <script src="calculator.js"></script>
 </body>
 </html>
